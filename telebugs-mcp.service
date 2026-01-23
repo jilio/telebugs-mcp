@@ -1,0 +1,13 @@
+[Unit]
+Description=Telebugs MCP Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/root/telebugs-mcp-linux
+Environment=PORT=3100
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
