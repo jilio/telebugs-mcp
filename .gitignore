@@ -1,3 +1,8 @@
 node_modules/
 telebugs-mcp
 telebugs-mcp-linux
+
+.agents/
+.claude/
+skills/
+.mcp.json
