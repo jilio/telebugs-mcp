@@ -33,6 +33,9 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 | `get_report` | Get full report with backtrace, breadcrumbs, context |
 | `get_statistics` | Get aggregated error statistics |
 | `search_errors` | Full-text search across errors |
+| `list_releases` | List all releases for a project with artifact counts |
+| `list_release_artifacts` | List uploaded artifacts for a release |
+| `get_sourcemap_status` | Check if a debug ID has sourcemaps available |
 
 ### list_error_groups
 
@@ -171,12 +174,6 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 1. Log into your Telebugs instance
 2. Go to User → Account Settings → Security
 3. Copy your API key
-
-Or query directly:
-
-```bash
-sqlite3 /path/to/production.sqlite3 "SELECT api_key FROM users WHERE active = 1;"
-```
 
 ## Security
 

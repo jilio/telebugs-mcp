@@ -15,6 +15,15 @@ import { listReportsSchema, listReports } from "./tools/list-reports";
 import { getReportSchema, getReport } from "./tools/get-report";
 import { getStatisticsSchema, getStatistics } from "./tools/get-statistics";
 import { searchErrorsSchema, searchErrors } from "./tools/search-errors";
+import { listReleasesSchema, listReleases } from "./tools/list-releases";
+import {
+  listReleaseArtifactsSchema,
+  listReleaseArtifacts,
+} from "./tools/list-release-artifacts";
+import {
+  getSourcemapStatusSchema,
+  getSourcemapStatus,
+} from "./tools/get-sourcemap-status";
 
 const PORT = parseInt(process.env.PORT ?? "3100", 10);
 
@@ -111,6 +120,39 @@ function createServer(userContext: UserContext): McpServer {
     async (params) => {
       const validated = searchErrorsSchema.parse(params);
       const result = searchErrors(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "list_releases",
+    "List all releases for a project with artifact counts",
+    listReleasesSchema.shape,
+    async (params) => {
+      const validated = listReleasesSchema.parse(params);
+      const result = listReleases(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "list_release_artifacts",
+    "List uploaded artifacts for a release",
+    listReleaseArtifactsSchema.shape,
+    async (params) => {
+      const validated = listReleaseArtifactsSchema.parse(params);
+      const result = listReleaseArtifacts(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "get_sourcemap_status",
+    "Check if a debug ID has sourcemaps available",
+    getSourcemapStatusSchema.shape,
+    async (params) => {
+      const validated = getSourcemapStatusSchema.parse(params);
+      const result = getSourcemapStatus(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
