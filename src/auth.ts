@@ -22,14 +22,15 @@ export function validateApiKey(apiKey: string): UserContext | null {
     return null;
   }
 
-  const memberships = query<{ project_id: number }>(
-    `SELECT project_id FROM project_memberships WHERE user_id = ?`,
-    [user.id]
-  );
-
   return {
     user,
-    projectIds: memberships.map((m) => m.project_id),
+    get projectIds() {
+      const memberships = query<{ project_id: number }>(
+        `SELECT project_id FROM project_memberships WHERE user_id = ?`,
+        [user.id]
+      );
+      return memberships.map((m) => m.project_id);
+    },
   };
 }
 
