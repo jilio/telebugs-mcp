@@ -1,0 +1,60 @@
+Implement the following plan:
+
+# Add Write Operations to Telebugs MCP Server
+
+## Context
+
+The MCP server currently only exposes read-only tools (list/get projects, error groups, reports, statistics, releases). To make the server more useful for error triage workflows, we'll add mutation tools: resolving/muting errors and managing notes — the most common actions when triaging errors.
+
+## Changes
+
+### 1. Enable database writes — `src/db.ts`
+
+- Remove `{ readonly: true }` from `new Database(dbPath)`
+- Add `PRAGMA busy_timeout = 5000` (retry writes for up to 5s if the Rails app holds a lock)
+- Add an `execute()` helper that returns `{ changes, lastInsertRowid }` using `stmt.run()`
+
+### 2. New tool files in `src/tools/`
+
+All tools follow the existing pattern: export a Zod schema and a function. Each mutation validates group access (exists + user's `projectIds` includes group's `project_id`) before writing.
+
+| File | Tool name | What it does |
+|------|-----------|-------------|
+| `resolve-error-group.ts` | `resolve_error_group` | Sets `resolved_at = now`, `resolver_id = user.id` |
+| `unresolve-error-group.ts` | `unresolve_error_group` | Clears `resolved_at`, `resolver_id` (reopens) |
+| `mute-error-group.ts` | `mute_error_group` | Sets `muted_at = now`, `muter_id = user.id`, optional `muted_until` |
+| `unmute-error-group.ts` | `unmute_error_group` | Clears `muted_at`, `muted_until`, `muter_id` |
+| `add-note.ts` | `add_note` | Inserts into `notes` (columns: `group_id, user_id, content, automated, created_at, updated_at`), increments `groups.notes_count` in a transaction |
+| `delete-note.ts` | `delete_note` | Deletes note (author-only), decrements `groups.notes_count` in a transaction |
+
+Guard rails for each tool:
+- Resolve: rejects if already resolved
+- Unresolve: rejects if not resolved
+- Mute: rejects if already muted or resolved
+- Unmute: rejects if not muted
+- Delete note: rejects if not the note author
+
+### 3. Register tools — `src/index.ts`
+
+- Add 6 imports after existing tool imports (line 26)
+- Add 6 `server.tool()` registrations after the `get_sourcemap_status` block (before `return server` at line 160)
+
+### 4. Update `README.md`
+
+- **Features section** (line 18): Change "Reads from Telebugs SQLite database (read-only)" to reflect read-write access
+- **Available Tools table** (after line 38): Add 6 new rows for the mutation tools
+- **New section** after `search_errors` docs (line 75): Add parameter tables for `mute_error_group` (has optional `muted_until`) and `add_note` (has `group_id` + `content`), and `delete_note` (has `group_id` + `note_id`). The other tools only take `group_id` so a brief note suffices.
+- **Security section** (line 180): Replace "Database opened in read-only mode" with "Write operations limited to error status changes and notes" and add "All mutations scoped to user's project memberships"
+
+## Verification
+
+1. Build: `bun build src/index.ts --target=bun --outfile=telebugs-mcp`
+2. Smoke test the health endpoint: `curl http://localhost:3100/health`
+3. Use the MCP tools from Claude to resolve/mute an error group and add a note, then read it back with `get_error_group` to confirm the state changed
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/me/.REDACTED.jsonl
+
+---
+
+commit, push and make a release
