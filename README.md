@@ -15,7 +15,7 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 
 ## Features
 
-- **Direct database access** - Reads from Telebugs SQLite database (read-only)
+- **Direct database access** - Reads and writes to Telebugs SQLite database
 - **API key authentication** - Uses existing Telebugs user API keys
 - **Access control** - Users only see projects they're members of
 - **SSE transport** - Allows remote Claude Desktop connections
@@ -36,6 +36,12 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 | `list_releases` | List all releases for a project with artifact counts |
 | `list_release_artifacts` | List uploaded artifacts for a release |
 | `get_sourcemap_status` | Check if a debug ID has sourcemaps available |
+| `resolve_error_group` | Resolve an error group (mark as fixed) |
+| `unresolve_error_group` | Reopen a resolved error group |
+| `mute_error_group` | Mute an error group with optional expiry |
+| `unmute_error_group` | Unmute a muted error group |
+| `add_note` | Add a note to an error group |
+| `delete_note` | Delete a note from an error group (author only) |
 
 ### list_error_groups
 
@@ -72,6 +78,31 @@ Returns `total_count` for pagination.
 | `query` | string | required | Full-text search query |
 | `project_id` | number | - | Filter by project ID |
 | `limit` | number | 20 | Max results (1-100) |
+
+### resolve_error_group / unresolve_error_group / unmute_error_group
+
+These tools only require `group_id` (number).
+
+### mute_error_group
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group_id` | number | required | The error group ID |
+| `muted_until` | string | - | Optional ISO 8601 date until which the group is muted |
+
+### add_note
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group_id` | number | required | The error group ID |
+| `content` | string | required | The note content |
+
+### delete_note
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group_id` | number | required | The error group ID |
+| `note_id` | number | required | The note ID to delete |
 
 ## Installation
 
@@ -177,7 +208,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 ## Security
 
-- Database opened in read-only mode
+- Write operations limited to error status changes and notes
+- All mutations scoped to user's project memberships
 - API keys validated against active users only
 - All queries filtered by user's project memberships
 - Parameterized queries (no SQL injection)

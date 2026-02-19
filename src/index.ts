@@ -24,6 +24,24 @@ import {
   getSourcemapStatusSchema,
   getSourcemapStatus,
 } from "./tools/get-sourcemap-status";
+import {
+  resolveErrorGroupSchema,
+  resolveErrorGroup,
+} from "./tools/resolve-error-group";
+import {
+  unresolveErrorGroupSchema,
+  unresolveErrorGroup,
+} from "./tools/unresolve-error-group";
+import {
+  muteErrorGroupSchema,
+  muteErrorGroup,
+} from "./tools/mute-error-group";
+import {
+  unmuteErrorGroupSchema,
+  unmuteErrorGroup,
+} from "./tools/unmute-error-group";
+import { addNoteSchema, addNote } from "./tools/add-note";
+import { deleteNoteSchema, deleteNote } from "./tools/delete-note";
 
 const PORT = parseInt(process.env.PORT ?? "3100", 10);
 
@@ -153,6 +171,72 @@ function createServer(userContext: UserContext): McpServer {
     async (params) => {
       const validated = getSourcemapStatusSchema.parse(params);
       const result = getSourcemapStatus(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "resolve_error_group",
+    "Resolve an error group (mark as fixed)",
+    resolveErrorGroupSchema.shape,
+    async (params) => {
+      const validated = resolveErrorGroupSchema.parse(params);
+      const result = resolveErrorGroup(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "unresolve_error_group",
+    "Reopen a resolved error group",
+    unresolveErrorGroupSchema.shape,
+    async (params) => {
+      const validated = unresolveErrorGroupSchema.parse(params);
+      const result = unresolveErrorGroup(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "mute_error_group",
+    "Mute an error group with optional expiry date",
+    muteErrorGroupSchema.shape,
+    async (params) => {
+      const validated = muteErrorGroupSchema.parse(params);
+      const result = muteErrorGroup(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "unmute_error_group",
+    "Unmute a muted error group",
+    unmuteErrorGroupSchema.shape,
+    async (params) => {
+      const validated = unmuteErrorGroupSchema.parse(params);
+      const result = unmuteErrorGroup(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "add_note",
+    "Add a note to an error group",
+    addNoteSchema.shape,
+    async (params) => {
+      const validated = addNoteSchema.parse(params);
+      const result = addNote(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "delete_note",
+    "Delete a note from an error group (author only)",
+    deleteNoteSchema.shape,
+    async (params) => {
+      const validated = deleteNoteSchema.parse(params);
+      const result = deleteNote(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
