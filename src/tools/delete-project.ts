@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { queryOne, execute } from "../db";
-import type { UserContext } from "../auth";
+import { Role, type UserContext } from "../auth";
 
 export const deleteProjectSchema = z.object({
   project_id: z.number().describe("The project ID to delete"),
@@ -16,7 +16,7 @@ export function deleteProject(
   ctx: UserContext,
   params: z.infer<typeof deleteProjectSchema>
 ): object {
-  if (ctx.user.role !== 0) {
+  if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to delete projects" };
   }
 

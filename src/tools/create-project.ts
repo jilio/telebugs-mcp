@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
-import { db } from "../db";
-import type { UserContext } from "../auth";
+import { db, queryOne } from "../db";
+import { Role, type UserContext } from "../auth";
 
 const PLATFORMS: Record<string, number> = {
   "Ruby": 0, "Ruby on Rails": 1, "PHP": 2, "Laravel": 3, "JavaScript": 4,
@@ -52,8 +52,16 @@ export function createProject(
   ctx: UserContext,
   params: z.infer<typeof createProjectSchema>
 ): object {
-  if (ctx.user.role !== 0) {
+  if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to create projects" };
+  }
+
+  const existing = queryOne<{ id: number }>(
+    `SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL`,
+    [params.name]
+  );
+  if (existing) {
+    return { error: `A project named '${params.name}' already exists` };
   }
 
   const platformId = PLATFORMS[params.platform];

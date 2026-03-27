@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { db, query, queryOne } from "../db";
-import type { UserContext } from "../auth";
+import { Role, type UserContext } from "../auth";
 
 export const addProjectMemberSchema = z.object({
   project_id: z.number().describe("The project ID"),
@@ -37,7 +37,7 @@ export function addProjectMember(
   ctx: UserContext,
   params: z.infer<typeof addProjectMemberSchema>
 ): object {
-  if (ctx.user.role !== 0) {
+  if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to manage project members" };
   }
 
@@ -89,7 +89,7 @@ export function removeProjectMember(
   ctx: UserContext,
   params: z.infer<typeof removeProjectMemberSchema>
 ): object {
-  if (ctx.user.role !== 0) {
+  if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to manage project members" };
   }
 
@@ -159,7 +159,7 @@ export function listProjectMembers(
       id: m.id,
       name: m.name,
       email: m.email_address,
-      role: m.role === 0 ? "admin" : "member",
+      role: m.role === Role.ADMIN ? "admin" : "member",
       joined_at: m.joined_at,
     })),
   };

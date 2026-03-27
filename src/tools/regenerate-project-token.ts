@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { queryOne, execute } from "../db";
-import type { UserContext } from "../auth";
+import { Role, type UserContext } from "../auth";
 
 export const regenerateProjectTokenSchema = z.object({
   project_id: z.number().describe("The project ID to regenerate the token for"),
@@ -16,7 +16,7 @@ export function regenerateProjectToken(
   ctx: UserContext,
   params: z.infer<typeof regenerateProjectTokenSchema>
 ): object {
-  if (ctx.user.role !== 0) {
+  if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to regenerate project tokens" };
   }
 
