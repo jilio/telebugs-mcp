@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.5",
+  "checkpoint_id": "5a8a18fd5764",
+  "session_id": "afe2c38f-3da2-44ee-9097-8111ec917e2f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T03:04:07.243257Z",
+  "branch": "feat/project-management",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "src/auth.ts",
+    "src/tools/create-project.ts",
+    "src/tools/delete-project.ts",
+    "src/tools/manage-project-members.ts",
+    "src/tools/regenerate-project-token.ts",
+    "src/tools/update-project.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a22d9fb4e487",
+  "transcript_identifier_at_start": "d44528a9-6cb3-4a8b-9bd7-4ce7167776dc",
+  "token_usage": {
+    "input_tokens": 27,
+    "cache_creation_tokens": 64043,
+    "cache_read_tokens": 623115,
+    "output_tokens": 7027,
+    "api_call_count": 19
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T03:04:07.083266Z",
+    "agent_lines": 440,
+    "human_added": 175,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 615,
+    "agent_percentage": 71.54471544715447
+  },
+  "transcript_path": ".claude/projects/-Users-me-Downloads-telebugs-mcp/afe2c38f-3da2-44ee-9097-8111ec917e2f.jsonl"
+}

@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.5",
+  "checkpoint_id": "5a8a18fd5764",
+  "strategy": "manual-commit",
+  "branch": "feat/project-management",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "src/auth.ts",
+    "src/tools/create-project.ts",
+    "src/tools/delete-project.ts",
+    "src/tools/manage-project-members.ts",
+    "src/tools/regenerate-project-token.ts",
+    "src/tools/update-project.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/5a/8a18fd5764/0/metadata.json",
+      "transcript": "/5a/8a18fd5764/0/full.jsonl",
+      "context": "/5a/8a18fd5764/0/context.md",
+      "content_hash": "/5a/8a18fd5764/0/content_hash.txt",
+      "prompt": "/5a/8a18fd5764/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 27,
+    "cache_creation_tokens": 64043,
+    "cache_read_tokens": 623115,
+    "output_tokens": 7027,
+    "api_call_count": 19
+  }
+}
