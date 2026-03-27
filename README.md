@@ -42,6 +42,15 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 | `unmute_error_group` | Unmute a muted error group |
 | `add_note` | Add a note to an error group |
 | `delete_note` | Delete a note from an error group (author only) |
+| `create_project` | Create a new project (admin only) |
+| `update_project` | Update a project's name or timezone (admin only) |
+| `delete_project` | Soft-delete a project (admin only) |
+| `get_project_token` | Get a project's token/DSN for SDK config |
+| `regenerate_project_token` | Regenerate a project's token (admin only) |
+| `add_project_member` | Add a user to a project (admin only) |
+| `remove_project_member` | Remove a user from a project (admin only) |
+| `list_project_members` | List project members with roles |
+| `list_platforms` | List available platform names for project creation |
 
 ### list_error_groups
 
@@ -103,6 +112,41 @@ These tools only require `group_id` (number).
 |-----------|------|---------|-------------|
 | `group_id` | number | required | The error group ID |
 | `note_id` | number | required | The note ID to delete |
+
+### create_project (admin only)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | string | required | Project name (unique) |
+| `platform` | string | required | Platform name — use `list_platforms` to see options |
+| `timezone` | string | `"UTC"` | Project timezone (e.g. `"America/New_York"`) |
+
+### update_project (admin only)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `project_id` | number | required | The project ID to update |
+| `name` | string | - | New project name |
+| `timezone` | string | - | New timezone |
+
+### delete_project / regenerate_project_token (admin only)
+
+These tools only require `project_id` (number).
+
+### add_project_member / remove_project_member (admin only)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `project_id` | number | required | The project ID |
+| `user_id` | number | required | The user ID to add/remove |
+
+### get_project_token / list_project_members
+
+These tools only require `project_id` (number).
+
+### list_platforms
+
+No parameters. Returns all available platform names.
 
 ## Installation
 
@@ -208,7 +252,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 ## Security
 
-- Write operations limited to error status changes and notes
+- Admin-only operations enforced for project management (create, update, delete, token regen, membership)
+- Write operations limited to error status changes, notes, and project management
 - All mutations scoped to user's project memberships
 - API keys validated against active users only
 - All queries filtered by user's project memberships
