@@ -42,6 +42,38 @@ import {
 } from "./tools/unmute-error-group";
 import { addNoteSchema, addNote } from "./tools/add-note";
 import { deleteNoteSchema, deleteNote } from "./tools/delete-note";
+import {
+  createProjectSchema,
+  createProject,
+} from "./tools/create-project";
+import {
+  updateProjectSchema,
+  updateProject,
+} from "./tools/update-project";
+import {
+  deleteProjectSchema,
+  deleteProject,
+} from "./tools/delete-project";
+import {
+  getProjectTokenSchema,
+  getProjectToken,
+} from "./tools/get-project-token";
+import {
+  regenerateProjectTokenSchema,
+  regenerateProjectToken,
+} from "./tools/regenerate-project-token";
+import {
+  addProjectMemberSchema,
+  addProjectMember,
+  removeProjectMemberSchema,
+  removeProjectMember,
+  listProjectMembersSchema,
+  listProjectMembers,
+} from "./tools/manage-project-members";
+import {
+  listPlatformsSchema,
+  listPlatforms,
+} from "./tools/list-platforms";
 
 const PORT = parseInt(process.env.PORT ?? "3100", 10);
 
@@ -237,6 +269,104 @@ function createServer(userContext: UserContext): McpServer {
     async (params) => {
       const validated = deleteNoteSchema.parse(params);
       const result = deleteNote(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "create_project",
+    "Create a new project (admin only). Use list_platforms to see available platform names.",
+    createProjectSchema.shape,
+    async (params) => {
+      const validated = createProjectSchema.parse(params);
+      const result = createProject(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "update_project",
+    "Update a project's name or timezone (admin only)",
+    updateProjectSchema.shape,
+    async (params) => {
+      const validated = updateProjectSchema.parse(params);
+      const result = updateProject(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "delete_project",
+    "Soft-delete a project (admin only). This is irreversible.",
+    deleteProjectSchema.shape,
+    async (params) => {
+      const validated = deleteProjectSchema.parse(params);
+      const result = deleteProject(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "get_project_token",
+    "Get the token/DSN for a project to configure error reporting in your app",
+    getProjectTokenSchema.shape,
+    async (params) => {
+      const validated = getProjectTokenSchema.parse(params);
+      const result = getProjectToken(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "regenerate_project_token",
+    "Regenerate a project's token (admin only). The old token becomes invalid immediately.",
+    regenerateProjectTokenSchema.shape,
+    async (params) => {
+      const validated = regenerateProjectTokenSchema.parse(params);
+      const result = regenerateProjectToken(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "add_project_member",
+    "Add a user to a project (admin only)",
+    addProjectMemberSchema.shape,
+    async (params) => {
+      const validated = addProjectMemberSchema.parse(params);
+      const result = addProjectMember(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "remove_project_member",
+    "Remove a user from a project (admin only)",
+    removeProjectMemberSchema.shape,
+    async (params) => {
+      const validated = removeProjectMemberSchema.parse(params);
+      const result = removeProjectMember(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "list_project_members",
+    "List all members of a project with their roles",
+    listProjectMembersSchema.shape,
+    async (params) => {
+      const validated = listProjectMembersSchema.parse(params);
+      const result = listProjectMembers(userContext, validated);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+
+  server.tool(
+    "list_platforms",
+    "List all available platform names for creating projects",
+    listPlatformsSchema.shape,
+    async () => {
+      const result = listPlatforms(userContext);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );

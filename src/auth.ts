@@ -1,5 +1,11 @@
 import { query, queryOne } from "./db";
 
+export const Role = {
+  MEMBER: 0,
+  ADMIN: 1,
+  SYSTEM: 2,
+} as const;
+
 export interface User {
   id: number;
   name: string;
