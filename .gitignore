@@ -1,4 +1,5 @@
 node_modules/
+.DS_Store
 telebugs-mcp
 telebugs-mcp-linux
 
@@ -6,3 +7,4 @@ telebugs-mcp-linux
 .claude/
 skills/
 .mcp.json
+telebugs/

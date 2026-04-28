@@ -1,0 +1,295 @@
+@import "tailwindcss";
+
+@source "./oauth-page.tsx";
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --color-white: oklch(100% 0 0);
+    --color-black: oklch(0% 0 0);
+    --color-slate-900: oklch(20.8% 0.042 265.755);
+    --color-gray-50: oklch(98.5% 0.002 247.839);
+    --color-gray-100: oklch(96.7% 0.003 264.542);
+    --color-gray-200: oklch(92.8% 0.006 264.531);
+    --color-gray-400: oklch(70.7% 0.022 261.325);
+    --color-gray-500: oklch(55.1% 0.027 264.364);
+    --color-gray-800: oklch(27.8% 0.033 256.848);
+    --color-gray-900: oklch(21% 0.034 264.665);
+    --color-zinc-100: oklch(96.7% 0.001 286.375);
+    --color-zinc-400: oklch(70.5% 0.015 286.067);
+    --color-zinc-500: oklch(55.2% 0.016 285.938);
+    --color-zinc-600: oklch(44.2% 0.017 285.786);
+    --color-zinc-700: oklch(37% 0.013 285.805);
+    --color-zinc-800: oklch(27.4% 0.006 286.033);
+    --color-zinc-900: oklch(21% 0.006 285.885);
+    --color-blue-300: oklch(80.9% 0.105 251.813);
+    --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-blue-500: oklch(62.3% 0.214 259.815);
+    --color-blue-600: oklch(54.6% 0.245 262.881);
+    --color-blue-700: oklch(48.8% 0.243 264.376);
+    --color-blue-800: oklch(42.4% 0.199 265.638);
+    --color-blue-900: oklch(37.9% 0.146 265.522);
+    --color-red-50: oklch(97.1% 0.013 17.38);
+    --color-red-200: oklch(88.5% 0.062 18.334);
+    --color-red-700: oklch(50.5% 0.213 27.518);
+    --logo-filter-default: none;
+    --logo-filter-hover: saturate(2);
+    --logo-filter-active: saturate(1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --logo-filter-default: hue-rotate(180deg) invert(1);
+      --logo-filter-hover: hue-rotate(180deg) invert(1) saturate(1.5);
+      --logo-filter-active: hue-rotate(180deg) invert(1);
+    }
+  }
+
+  html {
+    background-color: light-dark(var(--color-white), var(--color-zinc-900));
+    color: light-dark(var(--color-black), var(--color-white));
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+  }
+}
+
+@layer components {
+  #main {
+    background-color: light-dark(var(--color-gray-50), var(--color-zinc-900));
+  }
+
+  .logo {
+    filter: var(--logo-filter-default);
+  }
+
+  .logo:hover {
+    filter: var(--logo-filter-hover);
+  }
+
+  .logo:active {
+    filter: var(--logo-filter-active);
+  }
+
+  .oauth-logo svg {
+    display: block;
+    width: 220px;
+    height: 52px;
+  }
+
+  .marketing-gradient {
+    --radial-tint: light-dark(
+      transparent,
+      color-mix(in oklab, var(--color-blue-400) 15%, transparent)
+    );
+    --g-start: light-dark(#ffffff, var(--color-zinc-900));
+    --g-mid: light-dark(#dbeafe, var(--color-zinc-900));
+    --g-accent: light-dark(
+      #bfdbfe,
+      color-mix(in oklab, var(--color-blue-900) 60%, var(--color-zinc-900))
+    );
+    background: radial-gradient(
+        140% 100% at 50% -20%,
+        var(--radial-tint),
+        transparent 65%
+      ),
+      linear-gradient(
+        165deg,
+        var(--g-start) 0%,
+        var(--g-start) 22%,
+        var(--g-mid) 45%,
+        var(--g-accent) 100%
+      );
+  }
+
+  .card {
+    background-color: light-dark(var(--color-white), var(--color-zinc-800));
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.25rem;
+    box-shadow:
+      0 0 0 1px light-dark(rgba(243, 244, 246, 0.05), var(--color-zinc-700)),
+      0 20px 25px -5px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.25)),
+      0 8px 10px -6px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.25));
+  }
+
+  .card__title {
+    padding: 1.25rem 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    color: light-dark(var(--color-gray-900), var(--color-zinc-100));
+  }
+
+  @media (min-width: 640px) {
+    .card__title {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  .card hr {
+    border: none;
+    border-top: 1px solid light-dark(var(--color-gray-200), var(--color-zinc-700));
+  }
+
+  .text-field {
+    display: block;
+    width: 100%;
+    padding: 0.35rem 0.75rem;
+    color: light-dark(var(--color-gray-800), var(--color-zinc-100));
+    border: 1px solid light-dark(rgba(0, 0, 0, 0.25), var(--color-zinc-600));
+    border-radius: 6px;
+    box-shadow:
+      inset 0 1px 2px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.3)),
+      0 1px 0 light-dark(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.1));
+    transition: box-shadow 0.2s, border 0.15s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: light-dark(var(--color-white), var(--color-zinc-700));
+  }
+
+  .text-field::placeholder {
+    color: light-dark(var(--color-gray-400), var(--color-zinc-500));
+    opacity: 1;
+  }
+
+  .text-field:focus {
+    outline: none;
+    border-color: light-dark(#2563eb, var(--color-blue-400));
+    box-shadow:
+      inset 0 1px 2px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.3)),
+      0 0 0 3px light-dark(rgba(37, 99, 235, 0.25), rgba(6, 182, 212, 0.25));
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 0;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s, box-shadow 0.1s, transform 0.1s;
+  }
+
+  .btn:hover {
+    text-decoration: none;
+  }
+
+  .btn:active {
+    transform: scale(0.99) translate(0, 1px);
+  }
+
+  .btn--primary {
+    color: light-dark(var(--color-white), var(--color-slate-900));
+    background-color: light-dark(var(--color-blue-600), var(--color-blue-400));
+    box-shadow:
+      inset 0 2px 2px #ffffff40,
+      inset 0 -2px light-dark(#4354d1a8, #0284c7a8),
+      0 0 0 1px light-dark(var(--color-blue-700), var(--color-blue-300)),
+      0 0 6px #00000005,
+      0 2px 4px #00000014;
+  }
+
+  .btn--primary:hover {
+    position: relative;
+    background-color: light-dark(var(--color-blue-700), var(--color-blue-300));
+  }
+
+  .btn--primary:hover::before {
+    content: "";
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(#ffffff61, #ffffff1a 35%, #fff0 55%);
+    position: absolute;
+    inset: 0;
+  }
+
+  .btn--primary:active {
+    background-color: light-dark(var(--color-blue-800), var(--color-blue-300));
+    box-shadow:
+      inset 0 2px 2px #ffffff40,
+      inset 0 -1px light-dark(#4354d1a8, #0284c7a8),
+      0 0 0 1px light-dark(var(--color-blue-700), var(--color-blue-400)),
+      0 0 6px #00000005,
+      0 1px 2px #00000014;
+  }
+
+  .btn--primary:focus {
+    outline: none;
+    background-color: light-dark(var(--color-blue-500), var(--color-blue-300));
+    box-shadow:
+      inset 0 2px 2px #ffffff40,
+      inset 0 -2px light-dark(#4354d1a8, #0284c7a8),
+      0 0 0 1px light-dark(var(--color-blue-700), var(--color-blue-300)),
+      0 0 6px #00000005,
+      0 2px 4px #00000014,
+      0 0 0 2px light-dark(var(--color-blue-600), var(--color-blue-300)),
+      0 0 0 4px light-dark(transparent, #000000);
+  }
+
+  .form-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: light-dark(var(--color-gray-500), var(--color-zinc-400));
+    font-size: 0.875rem;
+  }
+
+  .form-separator::before,
+  .form-separator::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: light-dark(var(--color-gray-200), var(--color-zinc-700));
+  }
+
+  .oauth-client-summary {
+    color: light-dark(var(--color-gray-800), var(--color-zinc-100));
+    background: light-dark(
+      rgba(219, 234, 254, 0.65),
+      color-mix(in oklab, var(--color-blue-900) 24%, transparent)
+    );
+    border: 1px solid
+      light-dark(rgba(37, 99, 235, 0.18), color-mix(in oklab, var(--color-blue-300) 30%, transparent));
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .oauth-client-summary code {
+    font-size: 0.8125rem;
+  }
+
+  .oauth-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    color: light-dark(var(--color-gray-800), var(--color-zinc-100));
+  }
+
+  .oauth-consent input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .oauth-error {
+    color: light-dark(var(--color-red-700), var(--color-red-200));
+    background: light-dark(
+      var(--color-red-50),
+      color-mix(in oklab, var(--color-red-700) 18%, transparent)
+    );
+    border: 1px solid
+      light-dark(var(--color-red-200), color-mix(in oklab, var(--color-red-200) 25%, transparent));
+  }
+}
