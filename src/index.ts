@@ -1,7 +1,8 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { UserContext } from "./auth";
 import {
@@ -90,9 +91,72 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 registerOAuthRoutes(app);
 
+type McpTransport = StreamableHTTPServerTransport | SSEServerTransport;
+
 // Store transports and user contexts by session ID
-const transports: Record<string, StreamableHTTPServerTransport> = {};
+const transports: Record<string, McpTransport> = {};
 const sessionContexts: Record<string, UserContext> = {};
+
+function deleteSession(sessionId: string) {
+  delete transports[sessionId];
+  delete sessionContexts[sessionId];
+}
+
+function sendMcpJsonError(
+  res: Response,
+  status: number,
+  code: number,
+  message: string
+) {
+  res.status(status).json({
+    jsonrpc: "2.0",
+    error: { code, message },
+    id: null,
+  });
+}
+
+function rejectUnauthorized(req: Request, res: Response, message: string) {
+  setOAuthChallenge(req, res);
+  sendMcpJsonError(res, 401, -32001, message);
+}
+
+function getAuthorizedUserContext(
+  req: Request,
+  res: Response
+): UserContext | null {
+  const bearerToken = extractBearerToken(req.headers.authorization);
+  if (!bearerToken) {
+    rejectUnauthorized(req, res, "Authorization required");
+    return null;
+  }
+
+  const userContext = validateBearerToken(bearerToken, getMcpResource(req));
+  if (!userContext) {
+    rejectUnauthorized(req, res, "Invalid or expired bearer token");
+    return null;
+  }
+
+  return userContext;
+}
+
+function requestMatchesSessionUser(
+  sessionId: string,
+  userContext: UserContext
+): boolean {
+  return sessionContexts[sessionId]?.user.id === userContext.user.id;
+}
+
+function getQuerySessionId(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (Array.isArray(value) && typeof value[0] === "string") {
+    return value[0];
+  }
+
+  return undefined;
+}
 
 function createServer(userContext: UserContext): McpServer {
   const server = new McpServer({
@@ -388,29 +452,33 @@ app.post("/mcp", async (req, res) => {
   let transport: StreamableHTTPServerTransport;
 
   if (sessionId && transports[sessionId]) {
-    // Reuse existing session
-    transport = transports[sessionId];
-  } else if (!sessionId && isInitializeRequest(req.body)) {
-    // New session initialization - validate OAuth access token or API key
-    const bearerToken = extractBearerToken(req.headers.authorization);
-    if (!bearerToken) {
-      setOAuthChallenge(req, res);
-      res.status(401).json({
-        jsonrpc: "2.0",
-        error: { code: -32001, message: "Authorization required" },
-        id: null,
-      });
+    const existingTransport = transports[sessionId];
+    if (!(existingTransport instanceof StreamableHTTPServerTransport)) {
+      sendMcpJsonError(
+        res,
+        400,
+        -32000,
+        "Session exists but uses a different transport protocol"
+      );
       return;
     }
 
-    const userContext = validateBearerToken(bearerToken, getMcpResource(req));
+    const userContext = getAuthorizedUserContext(req, res);
     if (!userContext) {
-      setOAuthChallenge(req, res);
-      res.status(401).json({
-        jsonrpc: "2.0",
-        error: { code: -32001, message: "Invalid or expired bearer token" },
-        id: null,
-      });
+      return;
+    }
+
+    if (!requestMatchesSessionUser(sessionId, userContext)) {
+      rejectUnauthorized(req, res, "Bearer token does not match session");
+      return;
+    }
+
+    // Reuse existing session
+    transport = existingTransport;
+  } else if (!sessionId && isInitializeRequest(req.body)) {
+    // New session initialization - validate OAuth access token or API key
+    const userContext = getAuthorizedUserContext(req, res);
+    if (!userContext) {
       return;
     }
 
@@ -423,16 +491,14 @@ app.post("/mcp", async (req, res) => {
         console.log(`Session initialized: ${id} for user: ${userContext.user.name}`);
       },
       onsessionclosed: (id) => {
-        delete transports[id];
-        delete sessionContexts[id];
+        deleteSession(id);
         console.log(`Session closed: ${id}`);
       },
     });
 
     transport.onclose = () => {
       if (transport.sessionId) {
-        delete transports[transport.sessionId];
-        delete sessionContexts[transport.sessionId];
+        deleteSession(transport.sessionId);
       }
     };
 
@@ -440,11 +506,12 @@ app.post("/mcp", async (req, res) => {
     const server = createServer(userContext);
     await server.connect(transport);
   } else {
-    res.status(400).json({
-      jsonrpc: "2.0",
-      error: { code: -32000, message: "Invalid session" },
-      id: null,
-    });
+    const userContext = getAuthorizedUserContext(req, res);
+    if (!userContext) {
+      return;
+    }
+
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
     return;
   }
 
@@ -453,24 +520,112 @@ app.post("/mcp", async (req, res) => {
 
 // MCP GET endpoint - SSE stream for server notifications
 app.get("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string;
-  const transport = transports[sessionId];
-  if (transport) {
-    await transport.handleRequest(req, res);
-  } else {
-    res.status(400).json({ error: "Invalid session" });
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  if (!sessionId) {
+    const userContext = getAuthorizedUserContext(req, res);
+    if (!userContext) {
+      return;
+    }
+
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
+    return;
   }
+
+  const userContext = getAuthorizedUserContext(req, res);
+  if (!userContext) {
+    return;
+  }
+
+  const transport = transports[sessionId];
+  if (!(transport instanceof StreamableHTTPServerTransport)) {
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
+    return;
+  }
+
+  if (!requestMatchesSessionUser(sessionId, userContext)) {
+    rejectUnauthorized(req, res, "Bearer token does not match session");
+    return;
+  }
+
+  await transport.handleRequest(req, res);
 });
 
 // MCP DELETE endpoint - session termination
 app.delete("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string;
-  const transport = transports[sessionId];
-  if (transport) {
-    await transport.handleRequest(req, res);
-  } else {
-    res.status(400).json({ error: "Invalid session" });
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  if (!sessionId) {
+    const userContext = getAuthorizedUserContext(req, res);
+    if (!userContext) {
+      return;
+    }
+
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
+    return;
   }
+
+  const userContext = getAuthorizedUserContext(req, res);
+  if (!userContext) {
+    return;
+  }
+
+  const transport = transports[sessionId];
+  if (!(transport instanceof StreamableHTTPServerTransport)) {
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
+    return;
+  }
+
+  if (!requestMatchesSessionUser(sessionId, userContext)) {
+    rejectUnauthorized(req, res, "Bearer token does not match session");
+    return;
+  }
+
+  await transport.handleRequest(req, res);
+});
+
+// Legacy HTTP+SSE endpoint for clients that have not moved to Streamable HTTP.
+app.get("/sse", async (req, res) => {
+  const userContext = getAuthorizedUserContext(req, res);
+  if (!userContext) {
+    return;
+  }
+
+  const transport = new SSEServerTransport("/messages", res);
+  transports[transport.sessionId] = transport;
+  sessionContexts[transport.sessionId] = userContext;
+
+  res.on("close", () => {
+    deleteSession(transport.sessionId);
+  });
+
+  const server = createServer(userContext);
+  await server.connect(transport);
+});
+
+// Legacy HTTP+SSE message endpoint.
+app.post("/messages", async (req, res) => {
+  const sessionId = getQuerySessionId(req.query.sessionId);
+  if (!sessionId) {
+    sendMcpJsonError(res, 400, -32000, "Missing sessionId");
+    return;
+  }
+
+  const transport = transports[sessionId];
+  if (!(transport instanceof SSEServerTransport)) {
+    sendMcpJsonError(res, 400, -32000, "Invalid session");
+    return;
+  }
+
+  const userContext = getAuthorizedUserContext(req, res);
+  if (!userContext) {
+    return;
+  }
+
+  if (!requestMatchesSessionUser(sessionId, userContext)) {
+    rejectUnauthorized(req, res, "Bearer token does not match session");
+    return;
+  }
+
+  await transport.handlePostMessage(req, res, req.body);
 });
 
 app.listen(PORT, () => {

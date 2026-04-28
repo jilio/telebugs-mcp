@@ -8,8 +8,8 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 ┌─────────────────┐                           ┌─────────────────────────────────────┐
 │  Local Machine  │                           │              Remote VPS             │
 │                 │         HTTPS             │                                     │
-│  Claude Desktop │ ◄───────────────────────► │  Bun MCP Server   ───►  Telebugs    │
-│                 │      (SSE transport)      │     :3100              SQLite DB    │
+│ Claude / MCP UI │ ◄───────────────────────► │  Bun MCP Server   ───►  Telebugs    │
+│                 │  (Streamable HTTP / SSE)  │     :3100              SQLite DB    │
 └─────────────────┘                           └─────────────────────────────────────┘
 ```
 
@@ -19,7 +19,8 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 - **MCP OAuth authentication** - Browser-based OAuth flow backed by Telebugs users
 - **API key authentication** - Still accepts existing Telebugs user API keys as bearer tokens
 - **Access control** - Users only see projects they're members of
-- **SSE transport** - Allows remote Claude Desktop connections
+- **Streamable HTTP transport** - Primary remote MCP endpoint at `/mcp`
+- **Legacy SSE transport** - Backwards-compatible endpoints at `/sse` and `/messages`
 - **Token efficient** - Compact JSON, defaults to open errors only
 - **Single binary** - Cross-compile to Linux, no runtime dependencies
 
@@ -214,8 +215,13 @@ systemctl status telebugs-mcp
 
 ### Nginx Reverse Proxy (Optional)
 
+Claude needs to reach the MCP endpoint plus OAuth discovery and callback routes.
+Proxying only `/mcp` will make connector setup fail during OAuth discovery.
+
+For a dedicated MCP host, proxy the whole origin:
+
 ```nginx
-location /mcp {
+location / {
     proxy_pass http://127.0.0.1:3100;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -231,9 +237,15 @@ location /mcp {
 }
 ```
 
-## Claude Desktop Configuration
+If this server must share a host with another app, route these public paths to
+the MCP server: `/mcp`, `/sse`, `/messages`, `/.well-known/`, `/oauth/`, and
+`/health`.
 
-For OAuth-capable MCP clients, configure the server URL only. The client will discover OAuth metadata, open a browser sign-in page, and retry with the issued bearer token:
+## Claude Configuration
+
+For Claude custom connectors and OAuth-capable MCP clients, configure the
+Streamable HTTP server URL only. The client will discover OAuth metadata, open a
+browser sign-in page, and retry with the issued bearer token:
 
 ```json
 {
@@ -250,6 +262,14 @@ When the MCP server runs behind a reverse proxy, set `MCP_BASE_URL` to the publi
 ```bash
 MCP_BASE_URL=https://your-server bun run start
 ```
+
+Claude Code can be configured directly:
+
+```bash
+claude mcp add --transport http telebugs https://your-server/mcp
+```
+
+For clients that still require legacy HTTP+SSE, use `https://your-server/sse`.
 
 The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page, shows the requesting client and redirect origin, and requires explicit approval before issuing an authorization code. It accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs. It can also accept a Telebugs sign-in link from `/session/transfers/...` when `TELEBUGS_SECRET_KEY_BASE` is set so the MCP server can derive Rails' `active_record/signed_id` verifier key and validate the signed id payload.
 
