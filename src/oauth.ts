@@ -150,6 +150,26 @@ function resourcesMatch(actual: string, expected: string): boolean {
   );
 }
 
+function parseAbsoluteUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function isValidRedirectUri(uri: string): boolean {
+  return parseAbsoluteUrl(uri) !== null;
+}
+
+function getClientDisplayName(client: OAuthClient): string {
+  return client.clientName?.trim() || "Unknown MCP client";
+}
+
+function getRedirectDisplayOrigin(redirectUri: string): string {
+  return parseAbsoluteUrl(redirectUri)?.origin ?? redirectUri;
+}
+
 export function validateOAuthAccessToken(
   token: string,
   expectedResource?: string
@@ -282,6 +302,11 @@ function parseAuthorizeParams(
     return "Unsupported OAuth scope requested.";
   }
 
+  const registeredClient = clients.get(clientId);
+  if (!registeredClient) {
+    return "Unknown client_id.";
+  }
+
   return {
     responseType,
     clientId,
@@ -291,6 +316,8 @@ function parseAuthorizeParams(
     codeChallenge,
     codeChallengeMethod,
     scope,
+    clientName: getClientDisplayName(registeredClient),
+    redirectOrigin: getRedirectDisplayOrigin(redirectUri),
   };
 }
 
@@ -372,9 +399,16 @@ export function registerOAuthRoutes(app: Express) {
     if (
       !Array.isArray(redirectUris) ||
       redirectUris.length === 0 ||
-      redirectUris.some((uri) => typeof uri !== "string")
+      redirectUris.some(
+        (uri) => typeof uri !== "string" || !isValidRedirectUri(uri)
+      )
     ) {
-      oauthError(res, 400, "invalid_client_metadata", "redirect_uris must be a non-empty string array.");
+      oauthError(
+        res,
+        400,
+        "invalid_client_metadata",
+        "redirect_uris must be a non-empty array of absolute URIs."
+      );
       return;
     }
 
@@ -414,6 +448,21 @@ export function registerOAuthRoutes(app: Express) {
     const parsedParams = parseAuthorizeParams(req, req.body as Record<string, unknown>);
     if (typeof parsedParams === "string") {
       res.status(400).send(parsedParams);
+      return;
+    }
+
+    const approvedClient = getSingleParam(req.body?.approve) === "true";
+    if (!approvedClient) {
+      noStore(res);
+      res
+        .status(400)
+        .type("html")
+        .send(
+          renderOAuthAuthorizePage(
+            parsedParams,
+            "Review the client details and approve access before continuing."
+          )
+        );
       return;
     }
 

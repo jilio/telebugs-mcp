@@ -7,10 +7,13 @@ import { getUserContextById, type UserContext } from "./auth";
 
 const SIGNED_ID_SALT = "active_record/signed_id";
 const TRANSFER_LINK_PURPOSE = "user/transfer";
+const SIGNED_ID_KEY_ITERATIONS = 2 ** 16;
+const SIGNED_ID_KEY_BYTES = 64;
 
 interface RailsSignedIdEnvelope {
   _rails?: {
     data?: unknown;
+    message?: unknown;
     exp?: unknown;
     pur?: unknown;
   };
@@ -52,7 +55,13 @@ function decodeBase64Url(value: string): string {
 }
 
 function deriveSignedIdSecret(secretKeyBase: string): Buffer {
-  return pbkdf2Sync(secretKeyBase, SIGNED_ID_SALT, 1000, 64, "sha256");
+  return pbkdf2Sync(
+    secretKeyBase,
+    SIGNED_ID_SALT,
+    SIGNED_ID_KEY_ITERATIONS,
+    SIGNED_ID_KEY_BYTES,
+    "sha1"
+  );
 }
 
 function digestMatches(encodedPayload: string, signature: string, secret: Buffer): boolean {
@@ -67,6 +76,42 @@ function digestMatches(encodedPayload: string, signature: string, secret: Buffer
     expectedBytes.length === actualBytes.length &&
     timingSafeEqual(expectedBytes, actualBytes)
   );
+}
+
+function parseUserId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number.parseInt(value, 10);
+  }
+
+  return null;
+}
+
+function decodeLegacySignedIdMessage(message: string): unknown | null {
+  try {
+    return JSON.parse(Buffer.from(message, "base64").toString("utf8"));
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(message, "base64url").toString("utf8"));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function readEnvelopeData(railsMetadata: NonNullable<RailsSignedIdEnvelope["_rails"]>): unknown | null {
+  if (railsMetadata.data !== undefined) {
+    return railsMetadata.data;
+  }
+
+  if (typeof railsMetadata.message === "string") {
+    return decodeLegacySignedIdMessage(railsMetadata.message);
+  }
+
+  return null;
 }
 
 function readSignedIdUserId(signedId: string, secretKeyBase: string): number | null {
@@ -99,17 +144,18 @@ function readSignedIdUserId(signedId: string, secretKeyBase: string): number | n
     return null;
   }
 
-  if (typeof railsMetadata.exp !== "string") {
-    return null;
+  if (railsMetadata.exp !== undefined) {
+    if (typeof railsMetadata.exp !== "string") {
+      return null;
+    }
+
+    const expiresAt = Date.parse(railsMetadata.exp);
+    if (!Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
+      return null;
+    }
   }
 
-  const expiresAt = Date.parse(railsMetadata.exp);
-  if (!Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
-    return null;
-  }
-
-  const userId = railsMetadata.data;
-  return typeof userId === "number" && Number.isInteger(userId) ? userId : null;
+  return parseUserId(readEnvelopeData(railsMetadata));
 }
 
 export function validateTransferLink(

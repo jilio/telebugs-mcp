@@ -6,7 +6,9 @@ import logoTelebugs from "./logo-telebugs.svg" with { type: "text" };
 export interface OAuthAuthorizePageParams {
   responseType: string;
   clientId: string;
+  clientName: string;
   redirectUri: string;
+  redirectOrigin: string;
   resource: string;
   state?: string;
   codeChallenge: string;
@@ -78,6 +80,16 @@ function OAuthAuthorizePage({ params, error }: OAuthAuthorizePageProps) {
                 <HiddenOAuthFields params={params} />
 
                 <div className="space-y-4 px-4 pb-6 sm:px-6 w-full sm:max-w-sm">
+                  <div className="oauth-client-summary text-sm">
+                    <p>
+                      <strong>{params.clientName}</strong> is requesting access to Telebugs MCP.
+                    </p>
+                    <p>
+                      It will receive the scopes <code>{params.scope}</code> and redirect to{" "}
+                      <code>{params.redirectOrigin}</code>.
+                    </p>
+                  </div>
+
                   {error ? (
                     <div className="oauth-error rounded-md px-3 py-2 text-sm" role="alert">
                       {error}
@@ -124,9 +136,17 @@ function OAuthAuthorizePage({ params, error }: OAuthAuthorizePageProps) {
                     />
                   </label>
 
+                  <label className="oauth-consent text-sm">
+                    <input type="checkbox" name="approve" value="true" />
+                    <span>
+                      I authorize <strong>{params.clientName}</strong> to access Telebugs MCP
+                      using the redirect target above.
+                    </span>
+                  </label>
+
                   <div className="mt-6">
                     <button className="w-full btn btn--primary" type="submit">
-                      Sign in
+                      Authorize
                     </button>
                   </div>
                 </div>

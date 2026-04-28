@@ -251,7 +251,7 @@ When the MCP server runs behind a reverse proxy, set `MCP_BASE_URL` to the publi
 MCP_BASE_URL=https://your-server bun run start
 ```
 
-The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page and accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs. It can also accept a Telebugs sign-in link from `/session/transfers/...` when `TELEBUGS_SECRET_KEY_BASE` is set so the MCP server can verify Rails' signed-id HMAC.
+The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page, shows the requesting client and redirect origin, and requires explicit approval before issuing an authorization code. It accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs. It can also accept a Telebugs sign-in link from `/session/transfers/...` when `TELEBUGS_SECRET_KEY_BASE` is set so the MCP server can derive Rails' `active_record/signed_id` verifier key and validate the signed id payload.
 
 If Telebugs is configured with `RAILS_MASTER_KEY` instead of `SECRET_KEY_BASE`, read the value from the Telebugs app with `bin/rails runner 'puts Rails.application.secret_key_base'` and pass it to this server as `TELEBUGS_SECRET_KEY_BASE`.
 
