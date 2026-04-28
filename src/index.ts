@@ -3,7 +3,14 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { validateApiKey, type UserContext } from "./auth";
+import type { UserContext } from "./auth";
+import {
+  extractBearerToken,
+  getMcpResource,
+  registerOAuthRoutes,
+  setOAuthChallenge,
+  validateBearerToken,
+} from "./oauth";
 
 import { listProjectsSchema, listProjects } from "./tools/list-projects";
 import {
@@ -78,18 +85,14 @@ import {
 const PORT = parseInt(process.env.PORT ?? "3100", 10);
 
 const app = express();
+app.set("trust proxy", true);
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+registerOAuthRoutes(app);
 
 // Store transports and user contexts by session ID
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 const sessionContexts: Record<string, UserContext> = {};
-
-function extractApiKey(authHeader: string | undefined): string | null {
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-  return authHeader.slice(7);
-}
 
 function createServer(userContext: UserContext): McpServer {
   const server = new McpServer({
@@ -388,22 +391,24 @@ app.post("/mcp", async (req, res) => {
     // Reuse existing session
     transport = transports[sessionId];
   } else if (!sessionId && isInitializeRequest(req.body)) {
-    // New session initialization - validate API key
-    const apiKey = extractApiKey(req.headers.authorization);
-    if (!apiKey) {
+    // New session initialization - validate OAuth access token or API key
+    const bearerToken = extractBearerToken(req.headers.authorization);
+    if (!bearerToken) {
+      setOAuthChallenge(req, res);
       res.status(401).json({
         jsonrpc: "2.0",
-        error: { code: -32001, message: "Missing Authorization header" },
+        error: { code: -32001, message: "Authorization required" },
         id: null,
       });
       return;
     }
 
-    const userContext = validateApiKey(apiKey);
+    const userContext = validateBearerToken(bearerToken, getMcpResource(req));
     if (!userContext) {
+      setOAuthChallenge(req, res);
       res.status(401).json({
         jsonrpc: "2.0",
-        error: { code: -32001, message: "Invalid API key" },
+        error: { code: -32001, message: "Invalid or expired bearer token" },
         id: null,
       });
       return;

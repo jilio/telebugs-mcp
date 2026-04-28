@@ -16,7 +16,8 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 ## Features
 
 - **Direct database access** - Reads and writes to Telebugs SQLite database
-- **API key authentication** - Uses existing Telebugs user API keys
+- **MCP OAuth authentication** - Browser-based OAuth flow backed by Telebugs users
+- **API key authentication** - Still accepts existing Telebugs user API keys as bearer tokens
 - **Access control** - Users only see projects they're members of
 - **SSE transport** - Allows remote Claude Desktop connections
 - **Token efficient** - Compact JSON, defaults to open errors only
@@ -171,6 +172,8 @@ bun run build:linux
 |----------|-------------|---------|
 | `TELEBUGS_DB_PATH` | Path to Telebugs SQLite database | `/var/lib/docker/volumes/telebugs-data/_data/db/production.sqlite3` |
 | `PORT` | HTTP port to listen on | `3100` |
+| `MCP_BASE_URL` | Public base URL for OAuth metadata and redirects | inferred from request |
+| `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth access tokens | `43200` |
 
 ## Running Locally
 
@@ -229,7 +232,27 @@ location /mcp {
 
 ## Claude Desktop Configuration
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+For OAuth-capable MCP clients, configure the server URL only. The client will discover OAuth metadata, open a browser sign-in page, and retry with the issued bearer token:
+
+```json
+{
+  "mcpServers": {
+    "telebugs": {
+      "url": "https://your-server/mcp"
+    }
+  }
+}
+```
+
+When the MCP server runs behind a reverse proxy, set `MCP_BASE_URL` to the public HTTPS origin:
+
+```bash
+MCP_BASE_URL=https://your-server bun run start
+```
+
+The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page and accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs.
+
+For clients that do not support MCP OAuth yet, a static bearer token still works. Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
@@ -256,6 +279,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 - Write operations limited to error status changes, notes, and project management
 - All mutations scoped to user's project memberships
 - API keys validated against active users only
+- OAuth access tokens are short-lived and kept in memory by the MCP server
 - All queries filtered by user's project memberships
 - Parameterized queries (no SQL injection)
 
