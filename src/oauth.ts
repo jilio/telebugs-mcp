@@ -10,6 +10,7 @@ import {
   renderOAuthAuthorizePage,
   type OAuthAuthorizePageParams,
 } from "./ui/oauth-page";
+import { validateTransferLink } from "./transfer-link";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const ACCESS_TOKEN_TTL_SECONDS = parseInt(
@@ -428,18 +429,35 @@ export function registerOAuthRoutes(app: Express) {
     const emailAddress =
       typeof req.body?.email_address === "string" ? req.body.email_address.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const transferLink =
+      typeof req.body?.transfer_link === "string" ? req.body.transfer_link.trim() : "";
 
-    const userContext =
-      emailAddress && password
-        ? await validatePasswordCredentials(emailAddress, password)
-        : null;
+    let userContext: UserContext | null = null;
+    let errorMessage = "Invalid Telebugs credentials.";
+
+    if (transferLink) {
+      const transferLinkResult = validateTransferLink(transferLink);
+
+      if (transferLinkResult.ok) {
+        userContext = transferLinkResult.userContext;
+      } else {
+        errorMessage =
+          transferLinkResult.reason === "missing_secret"
+            ? "Sign-in links are not configured on this MCP server."
+            : "Invalid or expired Telebugs sign-in link.";
+      }
+    } else if (emailAddress && password) {
+      userContext = await validatePasswordCredentials(emailAddress, password);
+    } else {
+      errorMessage = "Enter your Telebugs password or sign-in link.";
+    }
 
     if (!userContext) {
       noStore(res);
       res
         .status(401)
         .type("html")
-        .send(renderOAuthAuthorizePage(parsedParams, "Invalid Telebugs credentials."));
+        .send(renderOAuthAuthorizePage(parsedParams, errorMessage));
       return;
     }
 

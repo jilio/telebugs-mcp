@@ -33,8 +33,10 @@ function createUserContext(user: User): UserContext {
 
 export function getUserContextById(userId: number): UserContext | null {
   const user = queryOne<User>(
-    `SELECT id, name, email_address, role FROM users WHERE id = ? AND active = 1`,
-    [userId]
+    `SELECT id, name, email_address, role
+     FROM users
+     WHERE id = ? AND active = 1 AND role != ?`,
+    [userId, Role.SYSTEM]
   );
 
   return user ? createUserContext(user) : null;

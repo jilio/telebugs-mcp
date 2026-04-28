@@ -92,7 +92,6 @@ function OAuthAuthorizePage({ params, error }: OAuthAuthorizePageProps) {
                       name="email_address"
                       autoComplete="username"
                       autoFocus
-                      required
                       placeholder="Enter your email address"
                     />
                   </label>
@@ -105,8 +104,23 @@ function OAuthAuthorizePage({ params, error }: OAuthAuthorizePageProps) {
                       name="password"
                       autoComplete="current-password"
                       maxLength={72}
-                      required
                       placeholder="Enter your password"
+                    />
+                  </label>
+
+                  <div className="form-separator" aria-hidden="true">
+                    <span>or</span>
+                  </div>
+
+                  <label className="block">
+                    <span className="sr-only">Sign-in link</span>
+                    <input
+                      className="text-field"
+                      type="url"
+                      name="transfer_link"
+                      autoComplete="off"
+                      inputMode="url"
+                      placeholder="Paste your sign-in link"
                     />
                   </label>
 

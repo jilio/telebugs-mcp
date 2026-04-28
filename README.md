@@ -174,6 +174,7 @@ bun run build:linux
 | `PORT` | HTTP port to listen on | `3100` |
 | `MCP_BASE_URL` | Public base URL for OAuth metadata and redirects | inferred from request |
 | `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth access tokens | `43200` |
+| `TELEBUGS_SECRET_KEY_BASE` | Telebugs Rails `secret_key_base`, required to accept Telebugs sign-in links | unset |
 
 ## Running Locally
 
@@ -250,7 +251,9 @@ When the MCP server runs behind a reverse proxy, set `MCP_BASE_URL` to the publi
 MCP_BASE_URL=https://your-server bun run start
 ```
 
-The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page and accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs.
+The OAuth sign-in page is rendered by React with CSS generated from Tailwind by Bun's Tailwind plugin. It matches the Telebugs sign-in page and accepts your Telebugs email/password, verified against the same bcrypt `users.password_digest` used by Telebugs. It can also accept a Telebugs sign-in link from `/session/transfers/...` when `TELEBUGS_SECRET_KEY_BASE` is set so the MCP server can verify Rails' signed-id HMAC.
+
+If Telebugs is configured with `RAILS_MASTER_KEY` instead of `SECRET_KEY_BASE`, read the value from the Telebugs app with `bin/rails runner 'puts Rails.application.secret_key_base'` and pass it to this server as `TELEBUGS_SECRET_KEY_BASE`.
 
 For clients that do not support MCP OAuth yet, a static bearer token still works. Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 

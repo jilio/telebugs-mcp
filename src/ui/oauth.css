@@ -239,6 +239,22 @@
       0 0 0 4px light-dark(transparent, #000000);
   }
 
+  .form-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: light-dark(var(--color-gray-500), var(--color-zinc-400));
+    font-size: 0.875rem;
+  }
+
+  .form-separator::before,
+  .form-separator::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: light-dark(var(--color-gray-200), var(--color-zinc-700));
+  }
+
   .oauth-error {
     color: light-dark(var(--color-red-700), var(--color-red-200));
     background: light-dark(
