@@ -1,0 +1,118 @@
+review this pr https://github.com/jilio/telebugs-mcp/pull/1
+from the dev: "
+Reeve
+13:52
+Message options
+pushed and PR is up: jilio/telebugs-mcp#1
+
+one thing to flag — i assumed role === 0 means admin based on the Rails convention. if Telebugs uses a different value for admin, lmk and i'll update."
+
+---
+
+can you fix it?
+
+---
+
+is it the best practices to use things like !== 1 - this magical numbers doesn't sound good to me.
+
+---
+
+yes
+
+---
+
+let's merge it and make a new github release/tag
+
+---
+
+hm, readme was not updated?
+
+---
+
+yes
+
+---
+
+we need to deploy it to our server, do you know how to do it?
+
+---
+
+<bash-input>pwd</bash-input>
+
+---
+
+<bash-stdout>/Users/me/Downloads/telebugs-mcp</bash-stdout><bash-stderr></bash-stderr>
+
+---
+
+let's deploy
+
+---
+
+git pull and deploy
+
+---
+
+find TELEBUGS_SECRET_KEY_BASE and set it
+
+---
+
+Couldn't reach the MCP server. You can check the server URL and verify the server is running. If this persists, share this reference with support: "ofid_fa8205c649001943"
+
+---
+
+it is obviouisly doesn't work? you don't want to fix it or what
+
+---
+
+Continue from where you left off.
+
+---
+
+Couldn't reach the MCP server. You can check the server URL and verify the server is running. If this persists, share this reference with support: "ofid_61586da8e002e07c" <- when i try to connect claude
+
+---
+
+deploy it first
+
+---
+
+so we can test
+
+---
+
+https://claude.REDACTED?redirect_url=%2Fdesktop%2Fconnected%2Fsettings%2Fconnectors%3F&open_in_browser=1&product_surface=claude-desktop-chat
+
+Couldn't reach the MCP server. You can check the server URL and verify the server is running. If this persists, share this reference with support: "ofid_61586da8e002e07c"
+
+---
+
+run journalctl
+
+---
+
+teach me what to set in zero-trust connector on cloudflare to make it work
+
+---
+
+do that. tunnel name telebugs because it telebugs server. telebugs-mcp.lookhere.tech
+
+---
+
+check
+
+---
+
+Не удаётся получить доступ к сайту
+Не удалось найти IP-адрес сервера telebugs-mcp.lookhere.tech.
+Попробуйте сделать следующее:
+
+Проверка подключения к Интернету
+Проверьте настройки прокси-сервера, брандмауэра и DNS
+ERR_NAME_NOT_RESOLVED
+
+how to enforce update in my browser
+
+---
+
+it works! let's push fix
