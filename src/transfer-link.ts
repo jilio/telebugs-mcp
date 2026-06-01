@@ -7,8 +7,17 @@ import { getUserContextById, type UserContext } from "./auth";
 
 const SIGNED_ID_SALT = "active_record/signed_id";
 const TRANSFER_LINK_PURPOSE = "user/transfer";
-const SIGNED_ID_KEY_ITERATIONS = 2 ** 16;
 const SIGNED_ID_KEY_BYTES = 64;
+const SIGNED_ID_KEY_DERIVATIONS = [
+  { iterations: 1000, digest: "sha256" },
+  { iterations: 1000, digest: "sha1" },
+  { iterations: 2 ** 16, digest: "sha256" },
+  { iterations: 2 ** 16, digest: "sha1" },
+] as const;
+const SIGNED_ID_SIGNATURE_DIGESTS = [
+  { digest: "sha256", hexLength: 64 },
+  { digest: "sha1", hexLength: 40 },
+] as const;
 
 interface RailsSignedIdEnvelope {
   _rails?: {
@@ -54,18 +63,30 @@ function decodeBase64Url(value: string): string {
   return Buffer.from(padded, "base64url").toString("utf8");
 }
 
-function deriveSignedIdSecret(secretKeyBase: string): Buffer {
+function deriveSignedIdSecret(
+  secretKeyBase: string,
+  keyDerivation: typeof SIGNED_ID_KEY_DERIVATIONS[number]
+): Buffer {
   return pbkdf2Sync(
     secretKeyBase,
     SIGNED_ID_SALT,
-    SIGNED_ID_KEY_ITERATIONS,
+    keyDerivation.iterations,
     SIGNED_ID_KEY_BYTES,
-    "sha1"
+    keyDerivation.digest
   );
 }
 
 function digestMatches(encodedPayload: string, signature: string, secret: Buffer): boolean {
-  const expectedSignature = createHmac("sha256", secret)
+  const signatureDigest = SIGNED_ID_SIGNATURE_DIGESTS.find(
+    (candidate) =>
+      candidate.hexLength === signature.length &&
+      new RegExp(`^[0-9a-f]{${candidate.hexLength}}$`, "i").test(signature)
+  );
+  if (!signatureDigest) {
+    return false;
+  }
+
+  const expectedSignature = createHmac(signatureDigest.digest, secret)
     .update(encodedPayload)
     .digest("hex");
 
@@ -75,6 +96,20 @@ function digestMatches(encodedPayload: string, signature: string, secret: Buffer
   return (
     expectedBytes.length === actualBytes.length &&
     timingSafeEqual(expectedBytes, actualBytes)
+  );
+}
+
+function signedIdSignatureMatches(
+  encodedPayload: string,
+  signature: string,
+  secretKeyBase: string
+): boolean {
+  return SIGNED_ID_KEY_DERIVATIONS.some((keyDerivation) =>
+    digestMatches(
+      encodedPayload,
+      signature,
+      deriveSignedIdSecret(secretKeyBase, keyDerivation)
+    )
   );
 }
 
@@ -115,20 +150,14 @@ function readEnvelopeData(railsMetadata: NonNullable<RailsSignedIdEnvelope["_rai
 }
 
 function readSignedIdUserId(signedId: string, secretKeyBase: string): number | null {
-  const signatureLength = 64;
-  const separatorIndex = signedId.length - signatureLength - 2;
+  const separatorIndex = signedId.lastIndexOf("--");
   if (separatorIndex <= 0 || signedId.slice(separatorIndex, separatorIndex + 2) !== "--") {
     return null;
   }
 
   const encodedPayload = signedId.slice(0, separatorIndex);
   const signature = signedId.slice(separatorIndex + 2);
-  if (!/^[0-9a-f]{64}$/i.test(signature)) {
-    return null;
-  }
-
-  const secret = deriveSignedIdSecret(secretKeyBase);
-  if (!digestMatches(encodedPayload, signature, secret)) {
+  if (!signedIdSignatureMatches(encodedPayload, signature, secretKeyBase)) {
     return null;
   }
 
