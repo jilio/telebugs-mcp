@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.5",
+  "checkpoint_id": "b73ec2da83ad",
+  "strategy": "manual-commit",
+  "branch": "codex/fix-oauth-reauth",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b7/3ec2da83ad/0/metadata.json",
+      "transcript": "/b7/3ec2da83ad/0/full.jsonl",
+      "context": "/b7/3ec2da83ad/0/context.md",
+      "content_hash": "/b7/3ec2da83ad/0/content_hash.txt",
+      "prompt": "/b7/3ec2da83ad/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 218,
+    "cache_creation_tokens": 332899,
+    "cache_read_tokens": 10367892,
+    "output_tokens": 51002,
+    "api_call_count": 120
+  }
+}

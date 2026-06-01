@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.5",
+  "checkpoint_id": "b73ec2da83ad",
+  "session_id": "afe2c38f-3da2-44ee-9097-8111ec917e2f",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-01T02:56:29.583148Z",
+  "branch": "codex/fix-oauth-reauth",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "143b05ad08a7",
+  "transcript_identifier_at_start": "a0b7ee9c-8061-4ec3-9801-22c3cbcc0558",
+  "token_usage": {
+    "input_tokens": 218,
+    "cache_creation_tokens": 332899,
+    "cache_read_tokens": 10367892,
+    "output_tokens": 51002,
+    "api_call_count": 120
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-01T02:56:29.227161Z",
+    "agent_lines": 0,
+    "human_added": 332,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 332,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-Users-me-Downloads-telebugs-mcp/afe2c38f-3da2-44ee-9097-8111ec917e2f.jsonl"
+}
