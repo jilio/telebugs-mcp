@@ -174,6 +174,8 @@ bun run build:linux
 | `PORT` | HTTP port to listen on | `3100` |
 | `MCP_BASE_URL` | Public base URL for OAuth metadata and redirects | inferred from request |
 | `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth access tokens | `43200` |
+| `OAUTH_REFRESH_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth refresh tokens | `7776000` |
+| `OAUTH_STORE_PATH` | JSON store for OAuth dynamic clients and token hashes | `telebugs-mcp-oauth.json` next to Telebugs DB when possible |
 | `TELEBUGS_SECRET_KEY_BASE` | Telebugs Rails `secret_key_base`, required to accept Telebugs sign-in links | unset |
 
 ## Running Locally
@@ -282,7 +284,7 @@ For clients that do not support MCP OAuth yet, a static bearer token still works
 - Write operations limited to error status changes, notes, and project management
 - All mutations scoped to user's project memberships
 - API keys validated against active users only
-- OAuth access tokens are short-lived and kept in memory by the MCP server
+- OAuth access tokens are short-lived; OAuth clients and token hashes are persisted for re-authentication and refresh
 - All queries filtered by user's project memberships
 - Parameterized queries (no SQL injection)
 
