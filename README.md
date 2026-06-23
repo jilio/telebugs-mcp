@@ -21,6 +21,7 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 - **API key authentication** - Still accepts existing Telebugs user API keys as bearer tokens
 - **Access control** - Users only see projects they're members of
 - **SSE transport** - Allows remote Claude Desktop connections
+- **Structured output** - Every tool declares an `outputSchema` and returns `structuredContent`; failures are signaled with `isError` so clients can tell errors from data
 - **Token efficient** - Compact JSON, defaults to open errors only
 - **Single binary** - Cross-compile to Linux, no runtime dependencies
 
