@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { db, query, queryOne } from "../db";
 import { Role, type UserContext } from "../auth";
+import {
+  createRestClient,
+  restErrorToResult,
+  TelebugsApiError,
+} from "../telebugs-rest";
 
 export const addProjectMemberSchema = z.object({
   project_id: z.number().describe("The project ID"),
@@ -33,14 +38,39 @@ interface Membership {
   project_id: number;
 }
 
-export function addProjectMember(
+export async function addProjectMember(
   ctx: UserContext,
   params: z.infer<typeof addProjectMemberSchema>
-): object {
+): Promise<object> {
   if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to manage project members" };
   }
 
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      // The REST endpoint is idempotent: adding an existing member succeeds.
+      await rest.addProjectUser(params.project_id, params.user_id);
+      return {
+        success: true,
+        project_id: params.project_id,
+        user_id: params.user_id,
+      };
+    } catch (error) {
+      if (error instanceof TelebugsApiError && error.status === 422) {
+        return { error: error.message || "User not found" };
+      }
+      return restErrorToResult(error, { notFound: "Project not found" });
+    }
+  }
+
+  return addProjectMemberViaDb(ctx, params);
+}
+
+function addProjectMemberViaDb(
+  ctx: UserContext,
+  params: z.infer<typeof addProjectMemberSchema>
+): object {
   const project = queryOne<Project>(
     `SELECT id, deleted_at FROM projects WHERE id = ?`,
     [params.project_id]
@@ -85,14 +115,37 @@ export function addProjectMember(
   };
 }
 
-export function removeProjectMember(
+export async function removeProjectMember(
   ctx: UserContext,
   params: z.infer<typeof removeProjectMemberSchema>
-): object {
+): Promise<object> {
   if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to manage project members" };
   }
 
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      // The REST endpoint is idempotent: removing a non-member succeeds.
+      await rest.removeProjectUser(params.project_id, params.user_id);
+      return {
+        success: true,
+        project_id: params.project_id,
+        user_id: params.user_id,
+        status: "removed",
+      };
+    } catch (error) {
+      return restErrorToResult(error, { notFound: "Project not found" });
+    }
+  }
+
+  return removeProjectMemberViaDb(ctx, params);
+}
+
+function removeProjectMemberViaDb(
+  ctx: UserContext,
+  params: z.infer<typeof removeProjectMemberSchema>
+): object {
   const project = queryOne<Project>(
     `SELECT id, deleted_at FROM projects WHERE id = ?`,
     [params.project_id]

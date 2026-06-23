@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOne } from "../db";
 import type { UserContext } from "../auth";
+import { createRestClient, restErrorToResult } from "../telebugs-rest";
 
 export const getProjectTokenSchema = z.object({
   project_id: z.number().describe("The project ID"),
@@ -12,7 +13,24 @@ interface ProjectToken {
   deleted_at: string | null;
 }
 
-export function getProjectToken(
+export async function getProjectToken(
+  ctx: UserContext,
+  params: z.infer<typeof getProjectTokenSchema>
+): Promise<object> {
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      const project = await rest.getProject(params.project_id);
+      return { project_id: params.project_id, token: project.token };
+    } catch (error) {
+      return restErrorToResult(error, { notFound: "Project not found" });
+    }
+  }
+
+  return getProjectTokenViaDb(ctx, params);
+}
+
+function getProjectTokenViaDb(
   ctx: UserContext,
   params: z.infer<typeof getProjectTokenSchema>
 ): object {

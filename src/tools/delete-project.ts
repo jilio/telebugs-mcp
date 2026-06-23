@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOne, execute } from "../db";
 import { Role, type UserContext } from "../auth";
+import { createRestClient, restErrorToResult } from "../telebugs-rest";
 
 export const deleteProjectSchema = z.object({
   project_id: z.number().describe("The project ID to delete"),
@@ -12,14 +13,35 @@ interface Project {
   deleted_at: string | null;
 }
 
-export function deleteProject(
+export async function deleteProject(
   ctx: UserContext,
   params: z.infer<typeof deleteProjectSchema>
-): object {
+): Promise<object> {
   if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to delete projects" };
   }
 
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      await rest.deleteProject(params.project_id);
+      return {
+        success: true,
+        project_id: params.project_id,
+        status: "deleted",
+      };
+    } catch (error) {
+      return restErrorToResult(error, { notFound: "Project not found" });
+    }
+  }
+
+  return deleteProjectViaDb(ctx, params);
+}
+
+function deleteProjectViaDb(
+  ctx: UserContext,
+  params: z.infer<typeof deleteProjectSchema>
+): object {
   const project = queryOne<Project>(
     `SELECT id, name, deleted_at FROM projects WHERE id = ?`,
     [params.project_id]

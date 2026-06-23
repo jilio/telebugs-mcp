@@ -15,6 +15,7 @@ An MCP (Model Context Protocol) server that allows AI agents to retrieve error r
 
 ## Features
 
+- **REST API backend (incremental)** - When `TELEBUGS_API_BASE_URL` is set, project and membership tools call the Telebugs REST API (added in Telebugs 1.16.0) instead of writing to SQLite directly. Tools without a REST equivalent keep using the database, and every REST-backed tool falls back to direct DB access when REST is not configured.
 - **Direct database access** - Reads and writes to Telebugs SQLite database
 - **MCP OAuth authentication** - Browser-based OAuth flow backed by Telebugs users
 - **API key authentication** - Still accepts existing Telebugs user API keys as bearer tokens
@@ -171,12 +172,34 @@ bun run build:linux
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TELEBUGS_DB_PATH` | Path to Telebugs SQLite database | `/var/lib/docker/volumes/telebugs-data/_data/db/production.sqlite3` |
+| `TELEBUGS_API_BASE_URL` | Base URL of the Telebugs REST API (e.g. `https://telebugs.example.com/api/telebugs/v1`). When set, REST-backed tools use the API instead of the database. Unset → direct DB access. | unset |
 | `PORT` | HTTP port to listen on | `3100` |
 | `MCP_BASE_URL` | Public base URL for OAuth metadata and redirects | inferred from request |
 | `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth access tokens | `43200` |
 | `OAUTH_REFRESH_TOKEN_TTL_SECONDS` | Lifetime for MCP OAuth refresh tokens | `7776000` |
 | `OAUTH_STORE_PATH` | JSON store for OAuth dynamic clients and token hashes | `telebugs-mcp-oauth.json` next to Telebugs DB when possible |
 | `TELEBUGS_SECRET_KEY_BASE` | Telebugs Rails `secret_key_base`, required to accept Telebugs sign-in links | unset |
+
+### Telebugs REST API (incremental migration)
+
+Telebugs 1.16.0 introduced a REST API (`/api/telebugs/v1`). This server is gradually moving off direct database access onto that API. Set `TELEBUGS_API_BASE_URL` to opt in:
+
+```bash
+TELEBUGS_API_BASE_URL=https://telebugs.example.com/api/telebugs/v1 bun run start
+```
+
+The user's own Telebugs API key (`users.api_key`, `tlbgs_...`) is forwarded as the REST Bearer token — for API-key sessions it's the token the client already sent; for OAuth sessions it's read from the user record. If a user has no API key, that user's REST-backed tools fall back to direct DB access.
+
+**REST-backed when `TELEBUGS_API_BASE_URL` is set** (otherwise direct DB):
+
+- `list_projects`, `create_project`, `update_project`, `delete_project`
+- `get_project_token`, `add_project_member`, `remove_project_member`
+
+**Still direct DB** (no REST equivalent yet, or REST would change behavior):
+
+- `list_project_members` — the REST endpoint requires admin; we allow any project member to list, so this stays on DB to avoid regressing non-admins.
+- `regenerate_project_token` — no REST endpoint.
+- All error-group, report, search, note, statistics, release, and sourcemap tools — to be migrated as the REST API gains group/report addressing by ID, notes, and statistics endpoints.
 
 ## Running Locally
 
