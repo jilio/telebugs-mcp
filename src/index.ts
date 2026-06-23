@@ -175,7 +175,7 @@ function toToolResult(result: unknown): {
 function createServer(userContext: UserContext): McpServer {
   const server = new McpServer({
     name: "telebugs-mcp",
-    version: "1.0.0",
+    version: "0.4.0",
   });
 
   // Registers a tool with both an input and output schema. Each closure
