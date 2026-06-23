@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { query } from "../db";
 import type { UserContext } from "../auth";
+import { createRestClient, restErrorToResult } from "../telebugs-rest";
 
 export const listProjectsSchema = z.object({});
 
@@ -51,7 +52,31 @@ const PLATFORMS: Record<number, string> = {
   165: "WSGI", 166: "Default Integrations",
 };
 
-export function listProjects(ctx: UserContext): object {
+export async function listProjects(ctx: UserContext): Promise<object> {
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      const projects = await rest.listProjects();
+      return {
+        projects: projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          platform: p.platform ?? "unknown",
+          timezone: p.timezone,
+          error_groups_count: p.groups_count,
+          reports_count: p.reports_count,
+          created_at: p.created_at,
+        })),
+      };
+    } catch (error) {
+      return restErrorToResult(error);
+    }
+  }
+
+  return listProjectsViaDb(ctx);
+}
+
+function listProjectsViaDb(ctx: UserContext): object {
   if (ctx.projectIds.length === 0) {
     return { projects: [] };
   }

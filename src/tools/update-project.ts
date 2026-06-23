@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOne, execute } from "../db";
 import { Role, type UserContext } from "../auth";
+import { createRestClient, restErrorToResult } from "../telebugs-rest";
 
 export const updateProjectSchema = z.object({
   project_id: z.number().describe("The project ID to update"),
@@ -13,14 +14,40 @@ interface Project {
   deleted_at: string | null;
 }
 
-export function updateProject(
+export async function updateProject(
   ctx: UserContext,
   params: z.infer<typeof updateProjectSchema>
-): object {
+): Promise<object> {
   if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to update projects" };
   }
 
+  if (!params.name && !params.timezone) {
+    return { error: "Nothing to update — provide name or timezone" };
+  }
+
+  const updated = {
+    ...(params.name ? { name: params.name } : {}),
+    ...(params.timezone ? { timezone: params.timezone } : {}),
+  };
+
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      await rest.updateProject(params.project_id, updated);
+      return { success: true, project_id: params.project_id, updated };
+    } catch (error) {
+      return restErrorToResult(error, { notFound: "Project not found" });
+    }
+  }
+
+  return updateProjectViaDb(ctx, params);
+}
+
+function updateProjectViaDb(
+  ctx: UserContext,
+  params: z.infer<typeof updateProjectSchema>
+): object {
   const project = queryOne<Project>(
     `SELECT id, deleted_at FROM projects WHERE id = ?`,
     [params.project_id]

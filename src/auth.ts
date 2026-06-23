@@ -15,12 +15,16 @@ export interface User {
 
 export interface UserContext {
   user: User;
+  // The user's Telebugs API key (`tlbgs_...`), forwarded as the Bearer token to
+  // the Telebugs REST API. Null only if the user has no key on record.
+  apiKey: string | null;
   projectIds: number[];
 }
 
-function createUserContext(user: User): UserContext {
+function createUserContext(user: User, apiKey: string | null): UserContext {
   return {
     user,
+    apiKey,
     get projectIds() {
       const memberships = query<{ project_id: number }>(
         `SELECT project_id FROM project_memberships WHERE user_id = ?`,
@@ -32,14 +36,14 @@ function createUserContext(user: User): UserContext {
 }
 
 export function getUserContextById(userId: number): UserContext | null {
-  const user = queryOne<User>(
-    `SELECT id, name, email_address, role
+  const user = queryOne<User & { api_key: string | null }>(
+    `SELECT id, name, email_address, role, api_key
      FROM users
      WHERE id = ? AND active = 1 AND role != ?`,
     [userId, Role.SYSTEM]
   );
 
-  return user ? createUserContext(user) : null;
+  return user ? createUserContext(user, user.api_key) : null;
 }
 
 export function validateApiKey(apiKey: string): UserContext | null {
@@ -48,7 +52,8 @@ export function validateApiKey(apiKey: string): UserContext | null {
     [apiKey]
   );
 
-  return user ? createUserContext(user) : null;
+  // The bearer token matched `users.api_key`, so it is this user's REST key.
+  return user ? createUserContext(user, apiKey) : null;
 }
 
 let usersTableColumns: Set<string> | null = null;
@@ -69,8 +74,8 @@ export async function validatePasswordCredentials(
     return null;
   }
 
-  const user = queryOne<User & { password_digest: string | null }>(
-    `SELECT id, name, email_address, role, password_digest
+  const user = queryOne<User & { password_digest: string | null; api_key: string | null }>(
+    `SELECT id, name, email_address, role, password_digest, api_key
      FROM users
      WHERE lower(email_address) = lower(?) AND active = 1 AND role != ?`,
     [emailAddress, Role.SYSTEM]
@@ -87,5 +92,5 @@ export async function validatePasswordCredentials(
     return null;
   }
 
-  return passwordMatches ? createUserContext(user) : null;
+  return passwordMatches ? createUserContext(user, user.api_key) : null;
 }

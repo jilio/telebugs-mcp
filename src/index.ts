@@ -129,7 +129,7 @@ function createServer(userContext: UserContext): McpServer {
     "List all projects accessible to the authenticated user",
     listProjectsSchema.shape,
     async () => {
-      const result = listProjects(userContext);
+      const result = await listProjects(userContext);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -305,7 +305,7 @@ function createServer(userContext: UserContext): McpServer {
     createProjectSchema.shape,
     async (params) => {
       const validated = createProjectSchema.parse(params);
-      const result = createProject(userContext, validated);
+      const result = await createProject(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -316,7 +316,7 @@ function createServer(userContext: UserContext): McpServer {
     updateProjectSchema.shape,
     async (params) => {
       const validated = updateProjectSchema.parse(params);
-      const result = updateProject(userContext, validated);
+      const result = await updateProject(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -327,7 +327,7 @@ function createServer(userContext: UserContext): McpServer {
     deleteProjectSchema.shape,
     async (params) => {
       const validated = deleteProjectSchema.parse(params);
-      const result = deleteProject(userContext, validated);
+      const result = await deleteProject(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -338,7 +338,7 @@ function createServer(userContext: UserContext): McpServer {
     getProjectTokenSchema.shape,
     async (params) => {
       const validated = getProjectTokenSchema.parse(params);
-      const result = getProjectToken(userContext, validated);
+      const result = await getProjectToken(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -360,7 +360,7 @@ function createServer(userContext: UserContext): McpServer {
     addProjectMemberSchema.shape,
     async (params) => {
       const validated = addProjectMemberSchema.parse(params);
-      const result = addProjectMember(userContext, validated);
+      const result = await addProjectMember(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );
@@ -371,7 +371,7 @@ function createServer(userContext: UserContext): McpServer {
     removeProjectMemberSchema.shape,
     async (params) => {
       const validated = removeProjectMemberSchema.parse(params);
-      const result = removeProjectMember(userContext, validated);
+      const result = await removeProjectMember(userContext, validated);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
   );

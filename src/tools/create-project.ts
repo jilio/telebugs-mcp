@@ -2,6 +2,11 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { db, queryOne } from "../db";
 import { Role, type UserContext } from "../auth";
+import {
+  createRestClient,
+  restErrorToResult,
+  TelebugsApiError,
+} from "../telebugs-rest";
 
 const PLATFORMS: Record<string, number> = {
   "Ruby": 0, "Ruby on Rails": 1, "PHP": 2, "Laravel": 3, "JavaScript": 4,
@@ -48,14 +53,55 @@ export const createProjectSchema = z.object({
   timezone: z.string().default("UTC").describe("Project timezone (e.g. 'UTC', 'America/New_York')"),
 });
 
-export function createProject(
+export async function createProject(
   ctx: UserContext,
   params: z.infer<typeof createProjectSchema>
-): object {
+): Promise<object> {
   if (ctx.user.role !== Role.ADMIN) {
     return { error: "Admin access required to create projects" };
   }
 
+  if (PLATFORMS[params.platform] === undefined) {
+    return {
+      error: `Unknown platform '${params.platform}'. Use list_platforms to see available options.`,
+    };
+  }
+
+  const rest = createRestClient(ctx);
+  if (rest) {
+    try {
+      const project = await rest.createProject({
+        name: params.name,
+        platform: params.platform,
+        timezone: params.timezone,
+      });
+      return {
+        success: true,
+        project: {
+          id: project.id,
+          name: project.name,
+          platform: project.platform,
+          timezone: project.timezone,
+          token: project.token,
+        },
+      };
+    } catch (error) {
+      if (error instanceof TelebugsApiError && error.status === 422) {
+        return {
+          error: error.message || `Could not create project '${params.name}'`,
+        };
+      }
+      return restErrorToResult(error);
+    }
+  }
+
+  return createProjectViaDb(ctx, params);
+}
+
+function createProjectViaDb(
+  ctx: UserContext,
+  params: z.infer<typeof createProjectSchema>
+): object {
   const existing = queryOne<{ id: number }>(
     `SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL`,
     [params.name]
