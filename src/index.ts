@@ -81,6 +81,34 @@ import {
   listPlatformsSchema,
   listPlatforms,
 } from "./tools/list-platforms";
+import type { ZodRawShape } from "zod";
+import {
+  listProjectsOutputSchema,
+  listErrorGroupsOutputSchema,
+  getErrorGroupOutputSchema,
+  listReportsOutputSchema,
+  getReportOutputSchema,
+  getStatisticsOutputSchema,
+  searchErrorsOutputSchema,
+  listReleasesOutputSchema,
+  listReleaseArtifactsOutputSchema,
+  getSourcemapStatusOutputSchema,
+  resolveErrorGroupOutputSchema,
+  unresolveErrorGroupOutputSchema,
+  muteErrorGroupOutputSchema,
+  unmuteErrorGroupOutputSchema,
+  addNoteOutputSchema,
+  deleteNoteOutputSchema,
+  createProjectOutputSchema,
+  updateProjectOutputSchema,
+  deleteProjectOutputSchema,
+  getProjectTokenOutputSchema,
+  regenerateProjectTokenOutputSchema,
+  addProjectMemberOutputSchema,
+  removeProjectMemberOutputSchema,
+  listProjectMembersOutputSchema,
+  listPlatformsOutputSchema,
+} from "./tools/output-schemas";
 
 const PORT = parseInt(process.env.PORT ?? "3100", 10);
 
@@ -117,284 +145,253 @@ registerOAuthRoutes(app);
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 const sessionContexts: Record<string, UserContext> = {};
 
+// Wraps a tool handler's plain return value into a structured MCP result. A
+// handler returning `{ error: "..." }` becomes an `isError` result (which skips
+// output-schema validation); anything else is returned as `structuredContent`
+// plus a JSON text block for backward compatibility.
+function toToolResult(result: unknown): {
+  content: { type: "text"; text: string }[];
+  structuredContent?: { [key: string]: unknown };
+  isError?: boolean;
+} {
+  if (
+    result !== null &&
+    typeof result === "object" &&
+    "error" in result &&
+    typeof (result as { error: unknown }).error === "string"
+  ) {
+    return {
+      content: [{ type: "text", text: (result as { error: string }).error }],
+      isError: true,
+    };
+  }
+
+  return {
+    content: [{ type: "text", text: JSON.stringify(result) }],
+    structuredContent: result as { [key: string]: unknown },
+  };
+}
+
 function createServer(userContext: UserContext): McpServer {
   const server = new McpServer({
     name: "telebugs-mcp",
     version: "1.0.0",
   });
 
-  // Register all tools - each tool closure captures the userContext
-  server.tool(
+  // Registers a tool with both an input and output schema. Each closure
+  // captures userContext; the result is wrapped by toToolResult.
+  const addTool = (
+    name: string,
+    description: string,
+    inputSchema: ZodRawShape,
+    outputSchema: ZodRawShape,
+    run: (args: any) => unknown | Promise<unknown>
+  ): void => {
+    server.registerTool(
+      name,
+      { description, inputSchema, outputSchema },
+      async (args: any) => toToolResult(await run(args))
+    );
+  };
+
+  addTool(
     "list_projects",
     "List all projects accessible to the authenticated user",
     listProjectsSchema.shape,
-    async () => {
-      const result = await listProjects(userContext);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listProjectsOutputSchema.shape,
+    () => listProjects(userContext)
   );
 
-  server.tool(
+  addTool(
     "list_error_groups",
     "List deduplicated error groups with optional filtering by project, status, and date range",
     listErrorGroupsSchema.shape,
-    async (params) => {
-      const validated = listErrorGroupsSchema.parse(params);
-      const result = listErrorGroups(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listErrorGroupsOutputSchema.shape,
+    (args) => listErrorGroups(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "get_error_group",
     "Get detailed information about a specific error group including notes",
     getErrorGroupSchema.shape,
-    async (params) => {
-      const validated = getErrorGroupSchema.parse(params);
-      const result = getErrorGroup(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    getErrorGroupOutputSchema.shape,
+    (args) => getErrorGroup(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "list_reports",
     "List individual error occurrences with optional filtering",
     listReportsSchema.shape,
-    async (params) => {
-      const validated = listReportsSchema.parse(params);
-      const result = listReports(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listReportsOutputSchema.shape,
+    (args) => listReports(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "get_report",
     "Get full details of a specific error report including stack trace, breadcrumbs, and context",
     getReportSchema.shape,
-    async (params) => {
-      const validated = getReportSchema.parse(params);
-      const result = getReport(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    getReportOutputSchema.shape,
+    (args) => getReport(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "get_statistics",
     "Get aggregated error statistics over time with optional project filtering",
     getStatisticsSchema.shape,
-    async (params) => {
-      const validated = getStatisticsSchema.parse(params);
-      const result = getStatistics(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    getStatisticsOutputSchema.shape,
+    (args) => getStatistics(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "search_errors",
     "Full-text search across error types and messages",
     searchErrorsSchema.shape,
-    async (params) => {
-      const validated = searchErrorsSchema.parse(params);
-      const result = searchErrors(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    searchErrorsOutputSchema.shape,
+    (args) => searchErrors(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "list_releases",
     "List all releases for a project with artifact counts",
     listReleasesSchema.shape,
-    async (params) => {
-      const validated = listReleasesSchema.parse(params);
-      const result = listReleases(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listReleasesOutputSchema.shape,
+    (args) => listReleases(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "list_release_artifacts",
     "List uploaded artifacts for a release",
     listReleaseArtifactsSchema.shape,
-    async (params) => {
-      const validated = listReleaseArtifactsSchema.parse(params);
-      const result = listReleaseArtifacts(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listReleaseArtifactsOutputSchema.shape,
+    (args) => listReleaseArtifacts(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "get_sourcemap_status",
     "Check if a debug ID has sourcemaps available",
     getSourcemapStatusSchema.shape,
-    async (params) => {
-      const validated = getSourcemapStatusSchema.parse(params);
-      const result = getSourcemapStatus(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    getSourcemapStatusOutputSchema.shape,
+    (args) => getSourcemapStatus(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "resolve_error_group",
     "Resolve an error group (mark as fixed)",
     resolveErrorGroupSchema.shape,
-    async (params) => {
-      const validated = resolveErrorGroupSchema.parse(params);
-      const result = resolveErrorGroup(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    resolveErrorGroupOutputSchema.shape,
+    (args) => resolveErrorGroup(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "unresolve_error_group",
     "Reopen a resolved error group",
     unresolveErrorGroupSchema.shape,
-    async (params) => {
-      const validated = unresolveErrorGroupSchema.parse(params);
-      const result = unresolveErrorGroup(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    unresolveErrorGroupOutputSchema.shape,
+    (args) => unresolveErrorGroup(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "mute_error_group",
     "Mute an error group with optional expiry date",
     muteErrorGroupSchema.shape,
-    async (params) => {
-      const validated = muteErrorGroupSchema.parse(params);
-      const result = muteErrorGroup(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    muteErrorGroupOutputSchema.shape,
+    (args) => muteErrorGroup(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "unmute_error_group",
     "Unmute a muted error group",
     unmuteErrorGroupSchema.shape,
-    async (params) => {
-      const validated = unmuteErrorGroupSchema.parse(params);
-      const result = unmuteErrorGroup(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    unmuteErrorGroupOutputSchema.shape,
+    (args) => unmuteErrorGroup(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "add_note",
     "Add a note to an error group",
     addNoteSchema.shape,
-    async (params) => {
-      const validated = addNoteSchema.parse(params);
-      const result = addNote(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    addNoteOutputSchema.shape,
+    (args) => addNote(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "delete_note",
     "Delete a note from an error group (author only)",
     deleteNoteSchema.shape,
-    async (params) => {
-      const validated = deleteNoteSchema.parse(params);
-      const result = deleteNote(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    deleteNoteOutputSchema.shape,
+    (args) => deleteNote(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "create_project",
     "Create a new project (admin only). Use list_platforms to see available platform names.",
     createProjectSchema.shape,
-    async (params) => {
-      const validated = createProjectSchema.parse(params);
-      const result = await createProject(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    createProjectOutputSchema.shape,
+    (args) => createProject(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "update_project",
     "Update a project's name or timezone (admin only)",
     updateProjectSchema.shape,
-    async (params) => {
-      const validated = updateProjectSchema.parse(params);
-      const result = await updateProject(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    updateProjectOutputSchema.shape,
+    (args) => updateProject(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "delete_project",
     "Soft-delete a project (admin only). This is irreversible.",
     deleteProjectSchema.shape,
-    async (params) => {
-      const validated = deleteProjectSchema.parse(params);
-      const result = await deleteProject(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    deleteProjectOutputSchema.shape,
+    (args) => deleteProject(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "get_project_token",
     "Get the token/DSN for a project to configure error reporting in your app",
     getProjectTokenSchema.shape,
-    async (params) => {
-      const validated = getProjectTokenSchema.parse(params);
-      const result = await getProjectToken(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    getProjectTokenOutputSchema.shape,
+    (args) => getProjectToken(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "regenerate_project_token",
     "Regenerate a project's token (admin only). The old token becomes invalid immediately.",
     regenerateProjectTokenSchema.shape,
-    async (params) => {
-      const validated = regenerateProjectTokenSchema.parse(params);
-      const result = regenerateProjectToken(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    regenerateProjectTokenOutputSchema.shape,
+    (args) => regenerateProjectToken(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "add_project_member",
     "Add a user to a project (admin only)",
     addProjectMemberSchema.shape,
-    async (params) => {
-      const validated = addProjectMemberSchema.parse(params);
-      const result = await addProjectMember(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    addProjectMemberOutputSchema.shape,
+    (args) => addProjectMember(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "remove_project_member",
     "Remove a user from a project (admin only)",
     removeProjectMemberSchema.shape,
-    async (params) => {
-      const validated = removeProjectMemberSchema.parse(params);
-      const result = await removeProjectMember(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    removeProjectMemberOutputSchema.shape,
+    (args) => removeProjectMember(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "list_project_members",
     "List all members of a project with their roles",
     listProjectMembersSchema.shape,
-    async (params) => {
-      const validated = listProjectMembersSchema.parse(params);
-      const result = listProjectMembers(userContext, validated);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listProjectMembersOutputSchema.shape,
+    (args) => listProjectMembers(userContext, args)
   );
 
-  server.tool(
+  addTool(
     "list_platforms",
     "List all available platform names for creating projects",
     listPlatformsSchema.shape,
-    async () => {
-      const result = listPlatforms(userContext);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
+    listPlatformsOutputSchema.shape,
+    () => listPlatforms(userContext)
   );
 
   return server;
